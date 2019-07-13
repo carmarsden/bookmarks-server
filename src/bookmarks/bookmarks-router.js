@@ -11,6 +11,49 @@ bookmarksRouter
     .get((req, res) => {
         res.json(bookmarks);
     })
+    .post(bodyParser, (req, res) => {
+        let { title, url, description='', rating=1 } = req.body;
+  
+        // validate title & url exist
+        if (!title) {
+            logger.error(`Title is required`);
+            return res.status(400).send('Invalid data');
+        }
+        if (!url) {
+            logger.error(`URL is required`);
+            return res.status(400).send('Invalid data');
+        }
+
+        // ensure rating is an integer 1-5
+        if (!Number.isInteger(rating)) {
+            const numRating = Number.parseInt(rating);
+            if (Number.isNaN(numRating)) {
+                logger.error(`Rating must be an integer`);
+                return res.status(400).send('Invalid data');
+            }
+            rating = numRating;
+        }
+        if (rating < 0 || rating > 5) {
+            logger.error(`Rating must be an integer from 1 to 5`);
+            return res.status(400).send('Invalid data');
+        }
+
+        const id = uuid();
+        const bookmark = {
+        id,
+        title,
+        url,
+        description,
+        rating
+        };
+        bookmarks.push(bookmark);    
+        
+        logger.info(`Bookmark with id ${id} created`);    
+        res
+            .status(201)
+            .location(`http://localhost:8000/bookmark/${id}`)
+            .json(bookmark);
+    })
 ;
 
 bookmarksRouter
