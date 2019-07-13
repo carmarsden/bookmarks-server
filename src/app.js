@@ -3,19 +3,41 @@ const express = require('express');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const cors = require('cors');
+
 const { NODE_ENV } = require('./config');
+const logger = require('./logger');
 
 const app = express();
 
-const morganOption = (NODE_ENV === 'production') ? 'tiny' : 'common';
 
+// LOGGING & API HANDLING MIDDLEWARE
+
+const morganOption = (NODE_ENV === 'production') ? 'tiny' : 'common';
 app.use(morgan(morganOption));
 app.use(helmet());
 app.use(cors());
 
+app.use(function validateBearerToken(req, res, next) {
+    const apiToken = process.env.API_TOKEN;
+    const authToken = req.get('Authorization');
+  
+    if (!authToken || authToken.split(' ')[1] !== apiToken) {
+        logger.error(`Unauthorized request to path: ${req.path}`);
+        return res.status(401).json({ error: 'Unauthorized request' });
+    };
+
+    next();  // move to the next middleware
+})
+
+
+// BASIC ENDPOINT
+
 app.get('/', (req, res) => {
     res.send('Hello, world!')
 })
+
+
+// ERROR HANDLING
 
 app.use(function errorHandler(error, req, res, next) {
     let response;
