@@ -6,6 +6,7 @@ const cors = require('cors');
 
 const { NODE_ENV } = require('./config');
 const logger = require('./logger');
+const bookmarksRouter = require('./bookmarks/bookmarks-router');
 
 const app = express();
 
@@ -30,7 +31,9 @@ app.use(function validateBearerToken(req, res, next) {
 })
 
 
-// BASIC ENDPOINT
+// BASIC ENDPOINT & ROUTING
+
+app.use(bookmarksRouter);
 
 app.get('/', (req, res) => {
     res.send('Hello, world!')
