@@ -55,8 +55,17 @@ describe('Bookmarks Endpoints', () => {
                 .expect(401, { error: 'Unauthorized request' })
             ;
         })
+
+        it('responds with 401 for GET /bookmarks/:id', () => {
+            return supertest(app)
+                .get('/bookmarks/:id')
+                .expect(401, { error: 'Unauthorized request' })
+            ;
+        })
+
     })
 
+    // BOOKMARKS ENDPOINT
     describe('GET /bookmarks', () => {
         context('Given no bookmarks', () => {
             it('responds with 200 and an empty list', () => {
@@ -68,4 +77,19 @@ describe('Bookmarks Endpoints', () => {
             })
         })
     })
+
+    // BOOKMARKS/:ID ENDPOINT
+    describe('GET /bookmarks/:id', () => {
+        context('Given no bookmarks', () => {
+            it('responds with 404 not found', () => {
+                const bookmarkId = 123;
+                return supertest(app)
+                    .get(`/bookmarks/${bookmarkId}`)
+                    .set('Authorization', `Bearer ${process.env.API_TOKEN}`)
+                    .expect(404, { error: { message: 'Bookmark not found' } })
+                ;
+            })
+        })
+    })
+
 })
