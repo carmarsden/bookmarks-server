@@ -114,7 +114,129 @@ describe('Bookmarks Endpoints', () => {
     })
 
     describe('POST /bookmarks', () => {
-        // add post tests
+        it('creates a bookmark, responding with 201 & new bookmark', function() {
+            const newBookmark = {
+                title: 'Test bookmark',
+                url: 'https://www.testsomething.com',
+                description: 'Test description',
+                rating: 3
+            };
+            return supertest(app)
+                .post('/bookmarks')
+                .set('Authorization', `Bearer ${API_TOKEN}`)
+                .send(newBookmark)
+                .expect(201)
+                .expect(res => {
+                    expect(res.body.title).to.eql(newBookmark.title)
+                    expect(res.body.url).to.eql(newBookmark.url)
+                    expect(res.body.description).to.eql(newBookmark.description)
+                    expect(res.body.rating).to.eql(newBookmark.rating)
+                    expect(res.body).to.have.property('id')
+                    expect(res.headers.location).to.eql(`/bookmarks/${res.body.id}`)
+                })
+                .then(postRes => 
+                    supertest(app)
+                    .get(`/bookmarks/${postRes.body.id}`)
+                    .set('Authorization', `Bearer ${API_TOKEN}`)
+                    .expect(postRes.body)
+                )
+            ;
+        })
+
+        it('creates a bookmark when rating is a number as string, responding with 201 & new bookmark', function() {
+            const newBookmark = {
+                title: 'Test bookmark',
+                url: 'https://www.testsomething.com',
+                description: 'Test description',
+                rating: '4.25'
+            };
+            return supertest(app)
+                .post('/bookmarks')
+                .set('Authorization', `Bearer ${API_TOKEN}`)
+                .send(newBookmark)
+                .expect(201)
+                .expect(res => {
+                    expect(res.body.title).to.eql(newBookmark.title)
+                    expect(res.body.url).to.eql(newBookmark.url)
+                    expect(res.body.description).to.eql(newBookmark.description)
+                    expect(res.body.rating).to.eql(4)
+                    expect(res.body).to.have.property('id')
+                    expect(res.headers.location).to.eql(`/bookmarks/${res.body.id}`)
+                })
+                .then(postRes => 
+                    supertest(app)
+                    .get(`/bookmarks/${postRes.body.id}`)
+                    .set('Authorization', `Bearer ${API_TOKEN}`)
+                    .expect(postRes.body)
+                )
+            ;
+        })
+
+        const requiredFields = ['title', 'url'];
+        requiredFields.forEach(field => {
+            const newBookmark = {
+                title: 'Test bookmark',
+                url: 'https://www.testsomething.com',
+            }
+
+            it(`responds with 400 and an error message when the '${field}' is missing`, () => {
+                delete newBookmark[field];
+                return supertest(app)
+                    .post('/bookmarks')
+                    .set('Authorization', `Bearer ${API_TOKEN}`)
+                    .send(newBookmark)
+                    .expect(400, {
+                        error: { message: `Missing '${field}' in request body` }
+                    })
+                ;
+            })
+        })
+
+        it('responds with 400 and error if not rating not a number', () => {
+            const newBookmarkInvalidRating = {
+                title: 'Test bookmark',
+                url: 'https://www.testsomething.com',
+                rating: 'invalid'
+            }
+            return supertest(app)
+                .post('/bookmarks')
+                .set('Authorization', `Bearer ${API_TOKEN}`)
+                .send(newBookmarkInvalidRating)
+                .expect(400, {
+                    error: { message: `Rating must be an integer from 1 to 5` }
+                })
+            ;
+        })
+
+        it('responds with 400 and error if not rating is not integer 1-5', () => {
+            const newBookmarkInvalidRating = {
+                title: 'Test bookmark',
+                url: 'https://www.testsomething.com',
+                rating: 10
+            }
+            return supertest(app)
+                .post('/bookmarks')
+                .set('Authorization', `Bearer ${API_TOKEN}`)
+                .send(newBookmarkInvalidRating)
+                .expect(400, {
+                    error: { message: `Rating must be an integer from 1 to 5` }
+                })
+            ;
+        })
+
+        it('removes XSS attack content from post response', () => {
+            const { maliciousBookmark, expectedBookmark } = makeMaliciousBookmark();
+            return supertest(app)
+                .post(`/bookmarks`)
+                .set('Authorization', `Bearer ${process.env.API_TOKEN}`)
+                .send(maliciousBookmark)
+                .expect(201)
+                .expect(res => {
+                    expect(res.body.title).to.eql(expectedBookmark.title)
+                    expect(res.body.description).to.eql(expectedBookmark.description)
+                })
+            ;
+        })
     })
 
     // BOOKMARKS/:ID ENDPOINT

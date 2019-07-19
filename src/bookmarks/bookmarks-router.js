@@ -44,7 +44,9 @@ bookmarksRouter
         newBookmark.rating = Number.parseInt(newBookmark.rating);  
         if (!Number.isInteger(newBookmark.rating) || newBookmark.rating < 0 || newBookmark.rating > 5) {
             logger.error(`Rating must be an integer from 1 to 5`);
-            return res.status(400).send('Invalid data');
+            return res.status(400).json({
+                error: { message: `Rating must be an integer from 1 to 5` }
+            });
         }
 
         // post action
