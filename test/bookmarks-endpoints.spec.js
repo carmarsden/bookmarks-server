@@ -297,4 +297,69 @@ describe('Bookmarks Endpoints', () => {
         })
     })
 
+    describe.only('DELETE /bookmarks/:id', () => {
+        context('Given no bookmarks', () => {
+            it('responds with 404 not found', () => {
+                const bookmarkId = 123;
+                return supertest(app)
+                    .delete(`/bookmarks/${bookmarkId}`)
+                    .set('Authorization', `Bearer ${API_TOKEN}`)
+                    .expect(404, { error: { message: 'Bookmark not found' } })
+                ;
+            })
+        })
+        
+        // given bookmarks, removes bookmark by ID
+
+        context('Given bookmarks already in the database', () => {
+            const testBookmarks = makeBookmarksArray();
+    
+            beforeEach('insert bookmarks', () => {
+                return db
+                    .into('bookmarks')
+                    .insert(testBookmarks)
+                ;
+            })
+            
+            it('responds with 204 and deletes bookmark', () => {
+                const idToRemove = 2;
+                const expectedBookmarks = testBookmarks.filter(bookmark => bookmark.id !== idToRemove);
+                return supertest(app)
+                    .delete(`/bookmarks/${idToRemove}`)
+                    .set('Authorization', `Bearer ${API_TOKEN}`)
+                    .expect(204)
+                    .then(() => 
+                        supertest(app)
+                            .get('/bookmarks')
+                            .set('Authorization', `Bearer ${API_TOKEN}`)
+                            .expect(expectedBookmarks)
+                    )
+                ;
+            })
+        })
+
+        context('Given an XSS attack bookmark', () => {
+            const { maliciousBookmark, expectedBookmark } = makeMaliciousBookmark();
+    
+            beforeEach('insert malicious bookmark', () => {
+                return db
+                    .into('bookmarks')
+                    .insert([ maliciousBookmark ])
+                ;
+            })
+    
+            it('removes XSS attack content', () => {
+                return supertest(app)
+                    .get(`/bookmarks/${maliciousBookmark.id}`)
+                    .set('Authorization', `Bearer ${API_TOKEN}`)
+                    .expect(200)
+                    .expect(res => {
+                        expect(res.body.title).to.eql(expectedBookmark.title)
+                        expect(res.body.description).to.eql(expectedBookmark.description)
+                    })
+                ;
+            })
+        })
+    })
+
 })
