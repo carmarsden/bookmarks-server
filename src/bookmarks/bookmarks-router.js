@@ -1,11 +1,19 @@
 const express = require('express');
-const uuid = require('uuid/v4');
+const xss = require('xss');
 const logger = require('../logger');
 const bookmarks = require('../store');
 const BookmarksService = require('./bookmarks-service');
 
 const bookmarksRouter = express.Router();
 const bodyParser = express.json();
+
+const cleanBookmark = bookmark => ({
+    id: bookmark.id,
+    title: xss(bookmark.title),
+    url: bookmark.url,
+    description: xss(bookmark.description),
+    rating: Number(bookmark.rating),
+})
 
 bookmarksRouter
     .route('/bookmarks')
@@ -15,48 +23,40 @@ bookmarksRouter
             .catch(next)
         ;
     })
-    .post(bodyParser, (req, res) => {
-        let { title, url, description='', rating=1 } = req.body;
-  
-        // validate title & url exist
-        if (!title) {
-            logger.error(`Title is required`);
-            return res.status(400).send('Invalid data');
-        }
-        if (!url) {
-            logger.error(`URL is required`);
-            return res.status(400).send('Invalid data');
+    .post(bodyParser, (req, res, next) => {
+        // check title & url were sent
+        for (const field of ['title', 'url']) {
+            if (!req.body[field]) {
+                logger.error(`${field} is required`);
+                return res.status(400).json({
+                    error: { message: `Missing '${field}' in request body` }
+                })
+            }
         }
 
-        // ensure rating is an integer 1-5
-        if (!Number.isInteger(rating)) {
-            const numRating = Number.parseInt(rating);
-            if (Number.isNaN(numRating)) {
-                logger.error(`Rating must be an integer`);
-                return res.status(400).send('Invalid data');
-            }
-            rating = numRating;
-        }
-        if (rating < 0 || rating > 5) {
+        // create bookmark object to post
+        const { title, url, description='', rating=1 } = req.body;
+        const newBookmark = { title, url, description, rating };
+
+        // manipulate & validate rating is an integer 1-5
+        newBookmark.rating = Number.parseInt(newBookmark.rating);  
+        if (!Number.isInteger(newBookmark.rating) || newBookmark.rating < 0 || newBookmark.rating > 5) {
             logger.error(`Rating must be an integer from 1 to 5`);
             return res.status(400).send('Invalid data');
         }
 
-        const id = uuid();
-        const bookmark = {
-        id,
-        title,
-        url,
-        description,
-        rating
-        };
-        bookmarks.push(bookmark);    
-        
-        logger.info(`Bookmark with id ${id} created`);    
-        res
-            .status(201)
-            .location(`http://localhost:8000/bookmark/${id}`)
-            .json(bookmark);
+        // post action
+        BookmarksService.insertBookmark(req.app.get('db'), newBookmark)
+            .then(bookmark => {
+                logger.info(`Bookmark with id ${bookmark.id} created`);
+                res
+                    .status(201)
+                    .location(`/bookmarks/${bookmark.id}`)
+                    .json(cleanBookmark(bookmark))
+                ;
+            })
+            .catch(next)
+        ;
     })
 ;
 
