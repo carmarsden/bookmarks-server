@@ -19,7 +19,9 @@ bookmarksRouter
     .route('/bookmarks')
     .get((req, res, next) => {
         BookmarksService.getAllBookmarks(req.app.get('db'))
-            .then(bookmarks => res.json(bookmarks))
+            .then(bookmarks => {
+                res.json(bookmarks.map(cleanBookmark))
+            })
             .catch(next)
         ;
     })

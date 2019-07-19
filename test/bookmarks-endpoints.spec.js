@@ -88,6 +88,33 @@ describe('Bookmarks Endpoints', () => {
                 ;
             })
         })
+
+        context('Given an XSS attack bookmark', () => {
+            const { maliciousBookmark, expectedBookmark } = makeMaliciousBookmark();
+    
+            beforeEach('insert malicious bookmark', () => {
+                return db
+                    .into('bookmarks')
+                    .insert([ maliciousBookmark ])
+                ;
+            })
+    
+            it('removes XSS attack content', () => {
+                return supertest(app)
+                    .get('/bookmarks')
+                    .set('Authorization', `Bearer ${API_TOKEN}`)
+                    .expect(200)
+                    .expect(res => {
+                        expect(res.body[0].title).to.eql(expectedBookmark.title)
+                        expect(res.body[0].description).to.eql(expectedBookmark.description)
+                    })
+                ;
+            })
+        })
+    })
+
+    describe('POST /bookmarks', () => {
+        // add post tests
     })
 
     // BOOKMARKS/:ID ENDPOINT
@@ -120,6 +147,29 @@ describe('Bookmarks Endpoints', () => {
                     .get(`/bookmarks/${bookmarkId}`)
                     .set('Authorization', `Bearer ${API_TOKEN}`)
                     .expect(200, expectedBookmark)
+                ;
+            })
+        })
+
+        context('Given an XSS attack bookmark', () => {
+            const { maliciousBookmark, expectedBookmark } = makeMaliciousBookmark();
+    
+            beforeEach('insert malicious bookmark', () => {
+                return db
+                    .into('bookmarks')
+                    .insert([ maliciousBookmark ])
+                ;
+            })
+    
+            it('removes XSS attack content', () => {
+                return supertest(app)
+                    .get(`/bookmarks/${maliciousBookmark.id}`)
+                    .set('Authorization', `Bearer ${API_TOKEN}`)
+                    .expect(200)
+                    .expect(res => {
+                        expect(res.body.title).to.eql(expectedBookmark.title)
+                        expect(res.body.description).to.eql(expectedBookmark.description)
+                    })
                 ;
             })
         })
