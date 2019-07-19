@@ -1,7 +1,7 @@
 const { expect } = require('chai');
 const knex = require('knex');
 const app = require('../src/app');
-const makeBookmarksArray = require('./bookmarks.fixtures');
+const { makeBookmarksArray, makeMaliciousBookmark } = require('./bookmarks.fixtures');
 
 const API_TOKEN = process.env.API_TOKEN;
 
@@ -21,6 +21,9 @@ describe('Bookmarks Endpoints', () => {
     after('disconnect from db', () => db.destroy());
 
     describe('Unauthorized requests', () => {
+        const testBookmarks = makeBookmarksArray();
+
+        // BOOKMARKS ENDPOINT
         it('responds with 401 for GET /bookmarks', () => {
             return supertest(app)
                 .get('/bookmarks')
@@ -28,9 +31,27 @@ describe('Bookmarks Endpoints', () => {
             ;
         })
 
-        it('responds with 401 for GET /bookmarks/:id', () => {
+        it('responds with 401 for POST /bookmarks', () => {
             return supertest(app)
-                .get('/bookmarks/:id')
+                .post('/bookmarks')
+                .send({ title: 'some title', url: 'www.someurl.com' })
+                .expect(401, { error: 'Unauthorized request' })
+            ;
+        })
+
+        // BOOKMARKS/:ID ENDPOINT
+        it('responds with 401 for GET /bookmarks/:id', () => {
+            const aBookmark = testBookmarks[1];
+            return supertest(app)
+                .get(`/bookmarks/${aBookmark.id}`)
+                .expect(401, { error: 'Unauthorized request' })
+            ;
+        })
+
+        it('responds with 401 for DELETE /bookmarks/:id', () => {
+            const aBookmark = testBookmarks[1];
+            return supertest(app)
+                .delete(`/bookmarks/${aBookmark.id}`)
                 .expect(401, { error: 'Unauthorized request' })
             ;
         })
