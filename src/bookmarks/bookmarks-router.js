@@ -62,37 +62,31 @@ bookmarksRouter
 
 bookmarksRouter
     .route('/bookmarks/:id')
-    .get((req, res, next) => {
-        const knexInstance = req.app.get('db');
-        const id = req.params.id;
-        BookmarksService.getById(knexInstance, id)
+    .all((req, res, next) => {
+        BookmarksService.getById(req.app.get('db'), req.params.id)
             .then(bookmark => {
                 if (!bookmark) {
-                    logger.error(`Bookmark with id ${id} not found.`);
                     return res.status(404).json({
                         error: { message: `Bookmark not found` }
                     })
-                }
-                res.json(bookmark)
+                };
+                res.bookmark = bookmark; // pass the bookmark as req.bookmark to next middleware
+                next()
             })
             .catch(next)
         ;
     })
-    .delete((req, res) => {
-        const { id } = req.params;
-        const bmarkIndex = bookmarks.findIndex(bmark => bmark.id == id);
-    
-        if (bmarkIndex === -1) {
-            logger.error(`Bookmark with id ${id} not found.`);
-            return res.status(404).send('Bookmark Not found');
-        }
-
-        bookmarks.splice(bmarkIndex, 1);
-      
-        logger.info(`Bookmark with id ${id} deleted.`);
-        res
-          .status(204)
-          .end();    
+    .get((req, res, next) => {
+        res.json(cleanBookmark(res.bookmark));
+    })
+    .delete((req, res, next) => {
+        BookmarksService.deleteBookmark(req.app.get('db'), req.params.id)
+            .then(() => {
+                logger.info(`Bookmark with id ${id} deleted.`);
+                res.status(204).end();
+            })
+            .catch(next)
+        ;
     })
 ;
 
