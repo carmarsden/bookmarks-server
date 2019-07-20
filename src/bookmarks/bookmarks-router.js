@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const xss = require('xss');
 const logger = require('../logger');
@@ -16,7 +17,7 @@ const cleanBookmark = bookmark => ({
 })
 
 bookmarksRouter
-    .route('/bookmarks')
+    .route('/')
     .get((req, res, next) => {
         BookmarksService.getAllBookmarks(req.app.get('db'))
             .then(bookmarks => {
@@ -55,7 +56,7 @@ bookmarksRouter
                 logger.info(`Bookmark with id ${bookmark.id} created`);
                 res
                     .status(201)
-                    .location(`/bookmarks/${bookmark.id}`)
+                    .location(path.posix.join(req.originalUrl, `${bookmark.id}`))
                     .json(cleanBookmark(bookmark))
                 ;
             })
@@ -65,7 +66,7 @@ bookmarksRouter
 ;
 
 bookmarksRouter
-    .route('/bookmarks/:id')
+    .route('/:id')
     .all((req, res, next) => {
         const id = req.params.id;
         BookmarksService.getById(req.app.get('db'), id)
@@ -91,6 +92,36 @@ bookmarksRouter
             .then(numRowsAffected => {
                 logger.info(`Bookmark with id ${id} deleted.`);
                 res.status(204).end();
+            })
+            .catch(next)
+        ;
+    })
+    .patch(bodyParser, (req, res, next) => {
+        const { title, url, description, rating } = req.body;
+        const bookmarkToUpdate = { title, url, description, rating };
+
+        // manipulate & validate rating is an integer 1-5
+        if (bookmarkToUpdate.rating) {
+            bookmarkToUpdate.rating = Number.parseInt(bookmarkToUpdate.rating);  
+            if (!Number.isInteger(bookmarkToUpdate.rating) || bookmarkToUpdate.rating < 0 || bookmarkToUpdate.rating > 5) {
+                logger.error(`Rating must be an integer from 1 to 5`);
+                return res.status(400).json({
+                    error: { message: `Rating must be an integer from 1 to 5` }
+                });
+            }    
+        }
+
+        const numberOfValues = Object.values(bookmarkToUpdate).filter(Boolean).length;
+        if (numberOfValues === 0) {
+            logger.error(`Invalid update: missing update fields`);
+            return res.status(400).json({
+                error: { message: `Request body must contain title, url, description, or rating` }
+            })
+        }
+
+        BookmarksService.updateBookmark(req.app.get('db'), req.params.id, bookmarkToUpdate)
+            .then(numRowsAffected => {
+                res.status(204).end()
             })
             .catch(next)
         ;
