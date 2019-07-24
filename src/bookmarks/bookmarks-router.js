@@ -2,7 +2,6 @@ const path = require('path');
 const express = require('express');
 const xss = require('xss');
 const logger = require('../logger');
-const bookmarks = require('../store');
 const BookmarksService = require('./bookmarks-service');
 
 const bookmarksRouter = express.Router();
